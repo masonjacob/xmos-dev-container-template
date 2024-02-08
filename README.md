@@ -50,6 +50,8 @@ sudo update-alternatives --install /usr/local/bin/usbip usbip $(command -v ls /u
 
 3. VSCode will now setup and run the development container, and then open a new editor window.
 
+4. You can verify that the XTAG is visible in the dev container by running `xrun -l`
+
 Congrats! You have a running dev enviroment and are ready to program and flash the XCORE platform.
 
 #### Manually
