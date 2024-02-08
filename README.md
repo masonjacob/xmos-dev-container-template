@@ -21,9 +21,7 @@ The xmos-dev container bind mounts `/dev/bus/usb`, so USB devices should be acce
 
 #### Windows:
 
-##### With Powershell Script
-
-To flash a dev board using the XTAG on a Windows host machine, the USB device must be tunneled into the container. 
+To connect to an XTAG on a Windows host machine, the USB device must be tunneled into the container. 
 
 1. Install USBIPD-WIN by running the following in Powershell:
 ```
@@ -38,17 +36,23 @@ sudo update-alternatives --install /usr/local/bin/usbip usbip $(command -v ls /u
 
 3. Connect the XTAG to the computer using the provided USB cable. 
 
-4. Open Powershell as administrator, and run `usbipd wsl list` to list all USB devices. 
+4. Run the Powershell `configure.ps1` script as administrator, located in `.\scripts\`. By default (no arguments passed) the script addes the UDEV rules to WSL if they do not exist, and attaches any XTAGs connected using USBIPD. To only attach or detach XTAG devices, run the script with `--attach` or `--detach` flags. Run the script with the `--help` flag to see all options.
 
-5. Select the bus ID of the XTAG and attach it to WSL2 with the following command:
-```
-usbipd wsl attach --busid <busid>
-```
-
-6. The XTAG is now connected to WSL2. To list the attached devices, use `lsusb` in a WSL2 terminal. The docker-compose for this dev enviroment bind mounts the `/dev/bus/usb` directory to the `xmos-dev` container, so once the USB device is mounted in WSl2 it is also mounted in the xmos-dev container.
-
+4. To verify that the XTAG has been attached, you can run `usbipd wsl list`.
 
 ### Starting the Dev Environment
+
+#### From VSCode (Recommended)
+
+1. Open this repository in VSCode.
+
+2. Using `Ctrl+Shift+P` to open the Command Palette, search and run `Dev Containers: Rebuild and Reopen in Container`
+
+3. VSCode will now setup and run the development container, and then open a new editor window.
+
+Congrats! You have a running dev enviroment and are ready to program and flash the XCORE platform.
+
+#### Manually
 
 The dev enviroment can be build and run with the following command:
 ```
@@ -62,34 +66,4 @@ After all containers are built and deployed, open VS-Code and do the following:
 
 VS-Code will now open a new window attached to the running xmos-dev container. Select the "Open Folder" to open the `/src` bind mount, located under `/home`. 
 
-Congrats! You have a running dev enviroment and are ready to program and flash the XCORE platform.
 
-### Flashing a Dev Board with XTAG
-
-#### Linux:
-The xmos-dev container bind mounts `/dev/bus/usb`, so USB devices should be accessible in the xmos-dev container automatically. Run `lsusb` in the container to verify.
-
-#### Windows:
-To flash a dev board using the XTAG on a Windows host machine, the USB device must be tunneled into the container. 
-
-1. Install USBIPD-WIN by running the following in Powershell:
-```
-winget install --interactive --exact dorssel.usbipd-win
-```
-
-2. Open a new WSL2 Terminal window and run the following:
-```
-sudo apt install linux-tools-generic hwdata
-sudo update-alternatives --install /usr/local/bin/usbip usbip $(command -v ls /usr/lib/linux-tools/*/usbip | tail -n1) 20
-```
-
-3. Connect the XTAG to the computer using the provided USB cable. 
-
-4. Open Powershell as administrator, and run `usbipd wsl list` to list all USB devices. 
-
-5. Select the bus ID of the XTAG and attach it to WSL2 with the following command:
-```
-usbipd wsl attach --busid <busid>
-```
-
-6. The XTAG is now connected to WSL2. To list the attached devices, use `lsusb` in a WSL2 terminal. The docker-compose for this dev enviroment bind mounts the `/dev/bus/usb` directory to the `xmos-dev` container, so once the USB device is mounted in WSl2 it is also mounted in the xmos-dev container.
