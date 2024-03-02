@@ -1,3 +1,5 @@
+#Requires -RunAsAdministrator
+
 # Attach/Detach XTAG Device to WSL, run UDEV rules
 function Convert-WindowsPathToWSLPath {
     # Function to convert Windows Path to WSL Path
@@ -48,39 +50,48 @@ function Add-UDEV-Rules-To-WSL {
 
 function Find-XTAG-Devices {
     # Run the `usbipd wsl list` command and capture its output
-    $usbipdOutput = usbipd wsl list
+    $usbipdOutput = usbipd list
     # Use the Where-Object cmdlet to filter the list based on the DEVICE name
     $filteredDevices = $usbipdOutput | Where-Object { $_ -match "XMOS XTAG-4" }
     # Extract BUSID from the filtered list
-    $busids = $filteredDevices | ForEach-Object {
-        # Split the line by whitespace and take the first element (BUSID)
-        $busid = ($_ -split '\s+')[0]
-        $busid
-    }
-    return $busids
+    $HardwareIDs = $filteredDevices | Select-String -Pattern '\b[a-fA-F0-9]{4}:[a-fA-F0-9]{4}\b' -AllMatches | ForEach-Object { $_.Matches.Value }
+    Write-Host "Found XTAG device with Hardware-ID: $HardwareIDs"
+    return $HardwareIDs
 }
-
-function Install {
-
+function Bind {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$HardwareID
+    )
+    usbipd bind --hardware-id $HardwareID
 }
 
 function Attach {
-    $busids = Find-XTAG-Devices
-    # Attach the busids to WSL
-    foreach ($busid in $busids) {
-        usbipd wsl attach --busid $busid
-    }
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$HardwareID
+    )
+    usbipd attach --wsl --hardware-id $HardwareID
 }
+
+function AutoAttach {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$HardwareID
+    )
+    usbipd attach --wsl --auto-attach --hardware-id $HardwareID 
+}
+
 function Detach {
-    $busids = Find-XTAG-Devices
-    # Detach the busids from WSL
-    if ($busids.Count -eq 0) {
-        Write-Host "No XTAG devices were found to detach from WSL. Exiting..."
-        exit 1
-    }
-    foreach ($busid in $busids) {
-        usbipd wsl detach --busid $busid
-    }
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [string]$HardwareID
+    )
+    usbipd detach --hardware-id $HardwareID
 }
 
 function Show-Usage {
@@ -88,32 +99,48 @@ function Show-Usage {
 "Usage: configure.ps1 [options?]`r`n
 Options:`r
 `t<none>`t`t add UDEV rules and attach XTAG device to WSL`r
-`t--install`t Install USBIPD-WIN via winget`r
-`t--attach`t Attach XTAG device to WSL`r
-`t--detach`t Detach XTAG device from WSL`r
 `t--add-rules`t Add UDEV rules to WSL`r
+`t--bind`t Bind XTAG device to WSL`r
+`t--attach`t Attach XTAG device to WSL`r
+`t--auto-attach`t Auto-Attach XTAG device to WSL`r
+`t--detach`t Detach XTAG device from WSL`r
 `t--help`t`t Show this help message`r`n"
     exit 1
 }
 
-# Check if required parameters are provided
-if ($args.Count -ne 0) {
-    foreach ($arg in $args) {
-        if ($arg -eq "--attach") {
-            Attach
-        } elseif ($arg -eq "--detach") {
-            Detach
-        } elseif ($arg -eq "--add-rules") {
-            Add-UDEV-Rules-To-WSL
-        } else {
-            Show-Usage
-        }
-    }
-} else {
-    Add-UDEV-Rules-To-WSL
-    Attach
+try {
+    # Check if the package is installed
+    Get-Package -Name usbipd-win -ErrorAction Stop
+} 
+catch {
+    # If Get-Package throws an error, the package is not installed
+    Write-Host "Package usbipd is not installed. Installing..."
+
+    # Install the package using winget
+    winget install usbipd
 }
 
+$HardwareIDs = Find-XTAG-Devices
+# Check if required parameters are provided
 
+if ($args.Count -ne 0) {
+    foreach ($HardwareID in $HardwareIDs) {
+        foreach ($arg in $args) {
+            if ($arg -eq "--bind") {
+                Bind -HardwareID $HardwareID
+            } elseif ($arg -eq "--attach") {
+                Attach -HardwareID $HardwareID
+            } elseif ($arg -eq "--auto-attach") {
+                AutoAttach -HardwareID $HardwareID
+            } elseif ($arg -eq "--detach") {
+                Detach -HardwareID $HardwareID
+            } elseif ($arg -eq "--add-rules") {
+                Add-UDEV-Rules-To-WSL
+            } else {
+                Show-Usage
+            }
+        }
+    }
+}
 
 
